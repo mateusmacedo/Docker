@@ -19,7 +19,6 @@ services:
       - --providers.file.watch=true
     ports:
       - "80:80"
-      - "8080:8080"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       # - ./traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf/dynamic_conf.yml:ro
@@ -32,29 +31,32 @@ services:
       - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
       - prometheus_data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
     networks:
       - shared
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.localhost`)"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   jaeger:
     image: jaegertracing/all-in-one:latest
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
       COLLECTOR_OTLP_GRPC_PORT: "4317"
-    ports:
-      - "16686:16686"
-      - "14317:4317"
     networks:
       - shared
     depends_on:
@@ -63,16 +65,16 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.jaeger.rule=Host(`jaeger.localhost`)"
       - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     volumes:
       - ./otel-collector/otel-collector.yml:/etc/otel-collector-config.yml
     command: ["--config=/etc/otel-collector-config.yml"]
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "8889:8889"
     networks:
       - shared
     depends_on:
@@ -83,8 +85,6 @@ services:
       resources:
         limits:
           memory: 512M
-        reservations:
-          memory: 256M
 
   grafana:
     image: grafana/grafana:latest
@@ -93,14 +93,16 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
-    ports:
-      - "3000:3000"
     networks:
       - shared
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   loki:
     image: grafana/loki:2.2.1
@@ -109,12 +111,14 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - shared
-    ports:
-      - "3100:3100"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.loki.rule=Host(`loki.localhost`)"
       - "traefik.http.services.loki.loadbalancer.server.port=3100"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   promtail:
     image: grafana/promtail:2.2.1
@@ -129,7 +133,5 @@ services:
       resources:
         limits:
           memory: 512M
-        reservations:
-          memory: 256M
     networks:
       - shared
